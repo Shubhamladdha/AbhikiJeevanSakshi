@@ -371,7 +371,7 @@
     </section>
 
     <footer>
-        <h2>#SakshiNandan2026</h2>
+        <h2>#AbhikiJeevanSakshi</h2>
         <p>We can't wait to celebrate with you!</p>
     </footer>
 
@@ -392,74 +392,61 @@
         function parseCSV(csvText) {
             const rows = csvText.split('\n').map(row => row.split(','));
             const container = document.getElementById('schedule-container');
-            container.innerHTML = ''; // Clear loading text
-    
-            // 1. Group Data by Date
-            // Object structure: { "19 Jan": [ {time, event, desc}, {time, event, desc} ] }
-            const groupedEvents = {};
-            
-            // Start at index 1 to skip headers
+            container.innerHTML = ''; 
+        
+            // 1. Grouping Logic
+            const groupedData = {};
+        
             for (let i = 1; i < rows.length; i++) {
                 const cols = rows[i];
-                if (cols.length < 2) continue; // Skip empty rows
-    
-                // Clean up quotes from CSV
-                const date = cols[0] ? cols[0].replace(/"/g, '').trim() : '';
-                const time = cols[1] ? cols[1].replace(/"/g, '').trim() : '';
-                const event = cols[2] ? cols[2].replace(/"/g, '').trim() : 'Wedding Function';
+                if (cols.length < 2) continue;
+        
+                const date = cols[0].replace(/"/g, '').trim();
+                const time = cols[1].replace(/"/g, '').trim();
+                const event = cols[2].replace(/"/g, '').trim();
                 const desc = cols[3] ? cols[3].replace(/"/g, '').trim() : '';
-    
-                if (!date) continue; // Skip if no date
-    
-                if (!groupedEvents[date]) {
-                    groupedEvents[date] = [];
+        
+                // If this date doesn't exist in our group yet, create it
+                if (!groupedData[date]) {
+                    groupedData[date] = [];
                 }
-    
-                groupedEvents[date].push({ time, event, desc });
+                // Add the event to this specific date bucket
+                groupedData[date].push({ time, event, desc });
             }
-    
-            // 2. Render the Groups
-            const dates = Object.keys(groupedEvents);
-    
-            if (dates.length === 0) {
-                container.innerHTML = '<p style="text-align:center">No events found in schedule.</p>';
-                return;
-            }
-    
-            dates.forEach(date => {
-                const events = groupedEvents[date];
-    
-                // Create Section Wrapper
-                const dateBlock = document.createElement('div');
-                dateBlock.className = 'date-block';
-    
-                // Create Date Header
-                const header = document.createElement('div');
-                header.className = 'date-header';
-                header.innerHTML = `<i class="far fa-calendar-alt"></i> ${date}`;
-                dateBlock.appendChild(header);
-    
-                // Create Events Container (Timeline)
-                const eventsContainer = document.createElement('div');
-                eventsContainer.className = 'events-container';
-    
-                // Fill Events
-                events.forEach(item => {
+        
+            // 2. Rendering Logic
+            for (const date in groupedData) {
+                // Create the Wrapper for the Day
+                const daySection = document.createElement('div');
+                daySection.className = 'day-group';
+        
+                // Create the Visual Date Heading
+                const dateHeading = document.createElement('div');
+                dateHeading.className = 'date-title-bar';
+                dateHeading.innerHTML = `<h3><i class="fas fa-calendar-day"></i> ${date}</h3>`;
+                daySection.appendChild(dateHeading);
+        
+                // Create a container for all cards of THIS day
+                const cardsContainer = document.createElement('div');
+                cardsContainer.className = 'cards-grid-for-day';
+        
+                groupedData[date].forEach(item => {
                     const card = document.createElement('div');
-                    card.className = 'event-card';
+                    card.className = 'event-card-refined';
                     card.innerHTML = `
-                        <span class="event-time">${item.time}</span>
-                        <h3 class="event-title">${item.event}</h3>
-                        <div class="event-desc">${item.desc}</div>
+                        <div class="card-inner">
+                            <span class="event-time-tag">${item.time}</span>
+                            <h4 class="event-name">${item.event}</h4>
+                            <p class="event-details">${item.desc}</p>
+                        </div>
                     `;
-                    eventsContainer.appendChild(card);
+                    cardsContainer.appendChild(card);
                 });
-    
-                dateBlock.appendChild(eventsContainer);
-                container.appendChild(dateBlock);
-            });
+        
+                daySection.appendChild(cardsContainer);
+                container.appendChild(daySection);
+            }
         }
-
         // Initialize
         fetchSchedule();
     </script>
