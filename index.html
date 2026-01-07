@@ -144,41 +144,91 @@
 
         /* --- Schedule (Dynamic) --- */
         .timeline {
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+        }
+        
+        .date-block {
+            margin-bottom: 50px;
             position: relative;
         }
-
-        .event-card {
-            background: white;
-            border-left: 5px solid var(--primary);
-            margin-bottom: 20px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            transition: transform 0.3s;
-        }
-
-        .event-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .event-date {
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        .event-time {
+        
+        /* The Date Header */
+        .date-header {
+            background-color: var(--royal);
             color: var(--gold);
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .event-title {
             font-family: var(--font-head);
             font-size: 1.5rem;
+            padding: 10px 30px;
+            border-radius: 50px;
+            display: inline-block;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border: 2px solid var(--gold);
+            
+            /* Make it stick to top while scrolling through that day */
+            position: sticky;
+            top: 80px; /* Below the nav bar */
+            z-index: 10;
+        }
+        
+        /* Container for events within a date */
+        .events-container {
+            border-left: 4px solid var(--secondary); /* The timeline line */
+            margin-left: 20px; /* Align with date */
+            padding-left: 30px;
+        }
+        
+        .event-card {
+            background: white;
+            border: 1px solid #eee;
+            border-left: 5px solid var(--primary);
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+            position: relative;
+        }
+        
+        /* The dot on the timeline */
+        .event-card::before {
+            content: '';
+            position: absolute;
+            left: -39px; /* Adjust based on padding/border */
+            top: 20px;
+            width: 14px;
+            height: 14px;
+            background: var(--primary);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px var(--secondary);
+        }
+        
+        .event-card:hover {
+            transform: translateX(5px);
+        }
+        
+        .event-time {
             color: var(--royal);
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .event-title {
+            font-family: var(--font-head);
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .event-desc {
+            font-size: 0.95rem;
+            color: #555;
+            line-height: 1.5;
         }
 
         /* --- Video Section --- */
@@ -335,7 +385,7 @@
                 parseCSV(data);
             } catch (error) {
                 console.error('Error fetching schedule:', error);
-                document.getElementById('schedule-container').innerHTML = '<p>Unable to load schedule. Please check back later.</p>';
+                document.getElementById('schedule-container').innerHTML = '<p style="text-align:center">Unable to load schedule. Please check connection.</p>';
             }
         }
 
@@ -343,35 +393,71 @@
             const rows = csvText.split('\n').map(row => row.split(','));
             const container = document.getElementById('schedule-container');
             container.innerHTML = ''; // Clear loading text
-
-            // We assume the first row might be headers, so we skip index 0 if it contains "Date" or similar
-            // Adjust startIndex to 1 if your CSV has headers, 0 if it doesn't.
-            let startIndex = 1; 
-
-            for (let i = startIndex; i < rows.length; i++) {
-                // IMPORTANT: This relies on the column order of your CSV.
-                // Assuming format: [0]Date, [1]Time, [2]Event Name, [3]Description/Location
-                // You may need to swap these indices based on your actual CSV layout.
+    
+            // 1. Group Data by Date
+            // Object structure: { "19 Jan": [ {time, event, desc}, {time, event, desc} ] }
+            const groupedEvents = {};
+            
+            // Start at index 1 to skip headers
+            for (let i = 1; i < rows.length; i++) {
                 const cols = rows[i];
-                
-                // Skip empty rows
-                if (cols.length < 2) continue;
-
-                const date = cols[0] ? cols[0].replace(/"/g, '') : '';
-                const time = cols[1] ? cols[1].replace(/"/g, '') : '';
-                const event = cols[2] ? cols[2].replace(/"/g, '') : 'Wedding Event';
-                const desc = cols[3] ? cols[3].replace(/"/g, '') : '';
-
-                const card = document.createElement('div');
-                card.className = 'event-card';
-                card.innerHTML = `
-                    <div class="event-date">${date}</div>
-                    <div class="event-time"><i class="far fa-clock"></i> ${time}</div>
-                    <h3 class="event-title">${event}</h3>
-                    <p>${desc}</p>
-                `;
-                container.appendChild(card);
+                if (cols.length < 2) continue; // Skip empty rows
+    
+                // Clean up quotes from CSV
+                const date = cols[0] ? cols[0].replace(/"/g, '').trim() : '';
+                const time = cols[1] ? cols[1].replace(/"/g, '').trim() : '';
+                const event = cols[2] ? cols[2].replace(/"/g, '').trim() : 'Wedding Function';
+                const desc = cols[3] ? cols[3].replace(/"/g, '').trim() : '';
+    
+                if (!date) continue; // Skip if no date
+    
+                if (!groupedEvents[date]) {
+                    groupedEvents[date] = [];
+                }
+    
+                groupedEvents[date].push({ time, event, desc });
             }
+    
+            // 2. Render the Groups
+            const dates = Object.keys(groupedEvents);
+    
+            if (dates.length === 0) {
+                container.innerHTML = '<p style="text-align:center">No events found in schedule.</p>';
+                return;
+            }
+    
+            dates.forEach(date => {
+                const events = groupedEvents[date];
+    
+                // Create Section Wrapper
+                const dateBlock = document.createElement('div');
+                dateBlock.className = 'date-block';
+    
+                // Create Date Header
+                const header = document.createElement('div');
+                header.className = 'date-header';
+                header.innerHTML = `<i class="far fa-calendar-alt"></i> ${date}`;
+                dateBlock.appendChild(header);
+    
+                // Create Events Container (Timeline)
+                const eventsContainer = document.createElement('div');
+                eventsContainer.className = 'events-container';
+    
+                // Fill Events
+                events.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'event-card';
+                    card.innerHTML = `
+                        <span class="event-time">${item.time}</span>
+                        <h3 class="event-title">${item.event}</h3>
+                        <div class="event-desc">${item.desc}</div>
+                    `;
+                    eventsContainer.appendChild(card);
+                });
+    
+                dateBlock.appendChild(eventsContainer);
+                container.appendChild(dateBlock);
+            });
         }
 
         // Initialize
